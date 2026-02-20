@@ -136,6 +136,11 @@
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
+        // 🚨 ตัวช่วยดักจับ Error (ถ้ามีปัญหา มันจะเด้งฟ้องบนหน้าจอทันที)
+        window.onerror = function(message, source, lineno, colno, error) {
+            alert("⚠️ พบข้อผิดพลาดบรรทัดที่ " + lineno + "\nรายละเอียด: " + message);
+        };
+
         // 🔴 ตั้งค่า LIFF ID และ API URL 🔴
         const MY_LIFF_ID = "2009188241-wYw5i6WS"; 
         const API_URL = "https://script.google.com/macros/s/AKfycbzJ_FI7UePuEJ9-QG7w64pTG3vWhsitGFQ1NcrLgvDb2a0oQzhpmN4rTo8DbJ783Kc/exec"; 
@@ -144,13 +149,11 @@
         let userUid = "";
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // โหลดฐานข้อมูลยา (เพื่อเอารูปภาพ)
             try {
                 const res = await fetch('./drugs.json');
                 drugDatabase = await res.json();
             } catch(e) { console.error("โหลดข้อมูลยาล้มเหลว"); }
 
-            // เริ่มต้น LIFF
             initializeLiff();
         });
 
@@ -179,12 +182,10 @@
 
                 if (data.status === 'success') {
                     if (data.isEligible === false) {
-                        // โดนล็อก 7 วัน
                         document.getElementById('nextDate').innerText = data.nextAvailableDate;
                         document.getElementById('loading').classList.add('d-none');
                         document.getElementById('lockedScreen').classList.remove('d-none');
                     } else {
-                        // อนุญาตให้กรอกฟอร์ม
                         document.getElementById('patName').innerText = data.patientName;
                         renderDrugList(data.activeDrugs);
                         document.getElementById('loading').classList.add('d-none');
@@ -201,7 +202,8 @@
         function renderDrugList(drugIds) {
             const container = document.getElementById('drugListContainer');
             if(drugIds.length === 0) {
-                container.innerHTML = "<p class="text-muted text-center">ไม่พบรายการยาในระบบ</p>";
+                // 🌟 แก้ไขบั๊กเครื่องหมายคำพูด (Quote) ตรงนี้แล้วครับ
+                container.innerHTML = '<p class="text-muted text-center">ไม่พบรายการยาในระบบ</p>';
                 return;
             }
 
@@ -209,7 +211,6 @@
             drugIds.forEach(id => {
                 let drugInfo = drugDatabase.find(d => d.id === id);
                 if(drugInfo) {
-                    // ใช้รูปยา ถ้าไม่มีให้ใช้รูป Default ยาเม็ด
                     let pillImg = drugInfo.pill_image || "https://cdn-icons-png.flaticon.com/512/822/822092.png"; 
                     html += `
                         <div class="drug-card">
@@ -226,7 +227,6 @@
         }
 
         function confirmSubmission() {
-            // เช็คว่ากรอกเวลาอาหารครบไหม (ไม่บังคับ แต่เตือนเฉยๆ)
             Swal.fire({
                 title: 'ยืนยันการส่งข้อมูล?',
                 html: '<span class="text-danger fw-bold">⚠️ ท่านจะส่งข้อมูลได้เพียง 1 ครั้งในรอบสัปดาห์</span><br><br>กรุณาตรวจสอบเวลาที่เกิดอาการให้ถูกต้อง เมื่อส่งแล้วจะไม่สามารถแก้ไขได้จนกว่าจะถึงสัปดาห์ถัดไป',
