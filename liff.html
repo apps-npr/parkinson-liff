@@ -16,8 +16,11 @@
         .form-control { border-radius: 10px; padding: 12px; font-size: 1.1rem; }
         .btn-primary { background-color: #4CAF50; border: none; border-radius: 10px; padding: 12px; font-size: 1.2rem; font-weight: bold; }
         .btn-primary:hover { background-color: #388E3C; }
+        
+        /* 🌟 ปรับแต่ง CSS กล่องยาให้รองรับรูป 2 รูป */
         .drug-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px; margin-bottom: 10px; display: flex; align-items: center; background-color: #fafafa; }
-        .drug-img { width: 60px; height: 60px; object-fit: contain; background-color: white; border-radius: 8px; border: 1px solid #ddd; margin-right: 15px; padding: 5px; }
+        .drug-img { width: 55px; height: 55px; object-fit: contain; background-color: white; border-radius: 8px; border: 1px solid #ddd; padding: 3px; margin-right: 5px; }
+        
         .loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255,255,255,0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .spinner-border { width: 3rem; height: 3rem; color: #4CAF50; }
         .checkbox-lg .form-check-input { width: 1.5em; height: 1.5em; margin-top: 0.1em; }
@@ -52,15 +55,24 @@
         </div>
     </div>
 
-    <div id="lockedScreen" class="container mt-5 d-none text-center">
-        <img src="https://cdn-icons-png.flaticon.com/512/1055/1055183.png" alt="Lock" width="100" class="mb-3 opacity-50">
+    <div id="lockedScreen" class="container mt-4 d-none text-center pb-4">
+        <img src="https://cdn-icons-png.flaticon.com/512/1055/1055183.png" alt="Lock" width="80" class="mb-2 opacity-50 mt-3">
         <h3 class="text-danger fw-bold">บันทึกข้อมูลไปแล้ว</h3>
-        <p class="fs-5 mt-3">ท่านได้ส่งข้อมูลของสัปดาห์นี้ไปแล้ว<br>เพื่อความแม่นยำของการประเมินอาการ</p>
-        <div class="alert alert-warning d-inline-block mt-2 fs-5">
-            กรุณากลับมาบันทึกใหม่อีกครั้งในวันที่<br>
-            <strong id="nextDate" class="fs-4 text-dark"></strong>
+        <p class="fs-6 mt-2 mb-1">ท่านได้ส่งข้อมูลของสัปดาห์นี้ไปแล้ว</p>
+        <div class="alert alert-warning d-inline-block mt-2 fs-6 py-2 px-3">
+            กรุณากลับมาบันทึกใหม่อีกครั้งวันที่<br>
+            <strong id="nextDate" class="fs-5 text-dark"></strong>
         </div>
-        <button class="btn btn-secondary w-100 mt-4 py-3 rounded-4 fs-5" onclick="liff.closeWindow()">ปิดหน้าต่าง</button>
+
+        <div class="card mt-3 text-start shadow-sm border-0">
+            <div class="card-header bg-success text-white" style="border-radius: 10px 10px 0 0; font-size: 1rem;">
+                💊 ทบทวนยาที่ท่านทานในปัจจุบัน
+            </div>
+            <div class="card-body" id="lockedDrugListContainer" style="max-height: 45vh; overflow-y: auto;">
+                </div>
+        </div>
+
+        <button class="btn btn-secondary w-100 py-3 rounded-4 fs-5 mt-2 shadow-sm" onclick="liff.closeWindow()">ปิดหน้าต่าง</button>
     </div>
 
     <div id="mainApp" class="d-none">
@@ -167,12 +179,15 @@
 
                 if (data.status === 'success') {
                     if (data.isEligible === false) {
+                        // 🌟 โดนล็อก 7 วัน แต่ให้แสดงรูปยาด้วย (ส่งไปที่ lockedDrugListContainer)
                         document.getElementById('nextDate').innerText = data.nextAvailableDate;
+                        renderDrugList(data.activeDrugs, 'lockedDrugListContainer');
                         document.getElementById('loading').classList.add('d-none');
                         document.getElementById('lockedScreen').classList.remove('d-none');
                     } else {
+                        // 🌟 วันปกติเข้าได้ ให้แสดงรูปยาในกล่องปกติ (ส่งไปที่ drugListContainer)
                         document.getElementById('patName').innerText = data.patientName;
-                        renderDrugList(data.activeDrugs);
+                        renderDrugList(data.activeDrugs, 'drugListContainer');
                         document.getElementById('loading').classList.add('d-none');
                         document.getElementById('mainApp').classList.remove('d-none');
                     }
@@ -213,10 +228,11 @@
             }
         }
 
-        function renderDrugList(drugIds) {
-            const container = document.getElementById('drugListContainer');
+        // 🌟 อัปเดตฟังก์ชันนี้ ให้รับค่า ID ของกล่องที่จะแสดง และโชว์รูปคู่กัน
+        function renderDrugList(drugIds, containerId) {
+            const container = document.getElementById(containerId);
             if(drugIds.length === 0) {
-                container.innerHTML = "<p class='text-muted text-center'>ไม่พบรายการยาในระบบ</p>";
+                container.innerHTML = "<p class='text-muted text-center my-3'>ไม่พบรายการยาในระบบ</p>";
                 return;
             }
             let html = "";
@@ -224,13 +240,29 @@
                 let drugInfo = drugDatabase.find(d => d.id === id);
                 if(drugInfo) {
                     let pillImg = drugInfo.pill_image || "https://cdn-icons-png.flaticon.com/512/822/822092.png"; 
-                    html += `<div class="drug-card"><img src="${pillImg}" class="drug-img"><div><h6 class="mb-1 fw-bold text-dark">${drugInfo.name}</h6><small class="text-muted">ยาควบคุมอาการพาร์กินสัน</small></div></div>`;
+                    let packImg = drugInfo.pack_image; // ดึงรูปแผงยามาด้วย
+                    
+                    // สร้าง HTML สำหรับรูปภาพ (ถ้ารูปแผงไม่มี ให้โชว์แค่เม็ดยา)
+                    let imagesHtml = `<img src="${pillImg}" class="drug-img" alt="เม็ดยา">`;
+                    if(packImg) {
+                        imagesHtml += `<img src="${packImg}" class="drug-img" alt="แผง/กล่องยา">`;
+                    }
+
+                    html += `
+                    <div class="drug-card">
+                        <div class="d-flex align-items-center me-3">
+                            ${imagesHtml}
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-bold text-dark">${drugInfo.name}</h6>
+                            <small class="text-muted">ยาควบคุมอาการ</small>
+                        </div>
+                    </div>`;
                 }
             });
             container.innerHTML = html;
         }
 
-        // 🌟 ฟังก์ชันสร้างช่องกรอกเวลาอันใหม่ (กดแล้วเพิ่มเรื่อยๆ)
         function addTimeRow(containerId, type) {
             const container = document.getElementById(containerId);
             const div = document.createElement('div');
@@ -261,7 +293,6 @@
         async function submitData() {
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
             
-            // 🌟 รวบรวมเวลาจากทุกๆ แถวที่คนไข้กดเพิ่มไว้ 🌟
             let offTimes = [];
             document.querySelectorAll('.off-row').forEach(row => {
                 let s = row.querySelector('.off-start').value;
@@ -284,8 +315,8 @@
                 mealBreak: document.getElementById('mBreak').value || "-",
                 mealLunch: document.getElementById('mLunch').value || "-",
                 mealDinner: document.getElementById('mDinner').value || "-",
-                offTimes: offTimes,   // ส่ง Array ของเวลาไปที่ Code.gs
-                dysTimes: dysTimes,   // ส่ง Array ของเวลาไปที่ Code.gs
+                offTimes: offTimes,   
+                dysTimes: dysTimes,   
                 otherSymptoms: otherSymptoms
             };
 
