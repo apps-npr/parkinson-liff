@@ -90,16 +90,24 @@
                 <div class="card-header text-danger border-danger">🚨 อาการผิดปกติ (ใน 7 วันที่ผ่านมา)</div>
                 <div class="card-body">
                     <h6 class="fw-bold text-secondary">1. อาการยาหมดฤทธิ์ (OFF-Time)</h6>
-                    <div class="row g-2 mb-4">
-                        <div class="col-6"><label class="form-label small">เวลาเริ่มมีอาการ</label><input type="time" class="form-control" id="offStart"></div>
-                        <div class="col-6"><label class="form-label small">เวลาอาการดีขึ้น</label><input type="time" class="form-control" id="offEnd"></div>
+                    <div id="offTimeContainer">
+                        <div class="row g-2 mb-2 off-row align-items-end">
+                            <div class="col-5"><label class="form-label small mb-1">เริ่ม</label><input type="time" class="form-control off-start"></div>
+                            <div class="col-5"><label class="form-label small mb-1">ดีขึ้น</label><input type="time" class="form-control off-end"></div>
+                            <div class="col-2"><button class="btn btn-outline-danger w-100 p-2" onclick="this.parentElement.parentElement.remove()" style="border-radius:10px;">ลบ</button></div>
+                        </div>
                     </div>
+                    <button class="btn btn-sm btn-outline-primary mb-4 mt-1 fw-bold px-3 py-2" style="border-radius:10px;" onclick="addTimeRow('offTimeContainer', 'off')">➕ เพิ่มช่วงเวลา OFF-Time</button>
 
-                    <h6 class="fw-bold text-secondary">2. อาการยุกยิก (Dyskinesia)</h6>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6"><label class="form-label small">เวลาเริ่มมีอาการ</label><input type="time" class="form-control" id="dysStart"></div>
-                        <div class="col-6"><label class="form-label small">เวลาอาการหายไป</label><input type="time" class="form-control" id="dysEnd"></div>
+                    <h6 class="fw-bold text-secondary mt-3">2. อาการยุกยิก (Dyskinesia)</h6>
+                    <div id="dysTimeContainer">
+                        <div class="row g-2 mb-2 dys-row align-items-end">
+                            <div class="col-5"><label class="form-label small mb-1">เริ่ม</label><input type="time" class="form-control dys-start"></div>
+                            <div class="col-5"><label class="form-label small mb-1">หายไป</label><input type="time" class="form-control dys-end"></div>
+                            <div class="col-2"><button class="btn btn-outline-danger w-100 p-2" onclick="this.parentElement.parentElement.remove()" style="border-radius:10px;">ลบ</button></div>
+                        </div>
                     </div>
+                    <button class="btn btn-sm btn-outline-primary mb-2 mt-1 fw-bold px-3 py-2" style="border-radius:10px;" onclick="addTimeRow('dysTimeContainer', 'dys')">➕ เพิ่มช่วงเวลายุกยิก</button>
                 </div>
             </div>
 
@@ -169,7 +177,6 @@
                         document.getElementById('mainApp').classList.remove('d-none');
                     }
                 } else {
-                    // 🌟 ถ้าไม่พบข้อมูล ให้โชว์หน้ากรอก HN และเบอร์โทร
                     document.getElementById('loading').classList.add('d-none');
                     document.getElementById('bindScreen').classList.remove('d-none');
                 }
@@ -178,7 +185,6 @@
             }
         }
 
-        // 🌟 ฟังก์ชันสำหรับการผูกบัญชี
         async function bindAccount() {
             let hn = document.getElementById('bindHN').value.trim();
             let phone = document.getElementById('bindPhone').value.trim();
@@ -195,7 +201,6 @@
                 
                 if (data.status === 'success') {
                     Swal.fire('สำเร็จ!', 'ผูกบัญชีเรียบร้อยแล้ว', 'success').then(() => {
-                        // โหลดข้อมูลเข้าหน้าบันทึกอาการทันที
                         document.getElementById('bindScreen').classList.add('d-none');
                         document.getElementById('loading').classList.remove('d-none');
                         fetchPatientData(userUid);
@@ -225,6 +230,19 @@
             container.innerHTML = html;
         }
 
+        // 🌟 ฟังก์ชันสร้างช่องกรอกเวลาอันใหม่ (กดแล้วเพิ่มเรื่อยๆ)
+        function addTimeRow(containerId, type) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `row g-2 mb-2 ${type}-row align-items-end`;
+            div.innerHTML = `
+                <div class="col-5"><input type="time" class="form-control ${type}-start"></div>
+                <div class="col-5"><input type="time" class="form-control ${type}-end"></div>
+                <div class="col-2"><button class="btn btn-outline-danger w-100 p-2" onclick="this.parentElement.parentElement.remove()" style="border-radius:10px;">ลบ</button></div>
+            `;
+            container.appendChild(div);
+        }
+
         function confirmSubmission() {
             Swal.fire({
                 title: 'ยืนยันการส่งข้อมูล?',
@@ -242,8 +260,23 @@
 
         async function submitData() {
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-            let sympCheckboxes = document.querySelectorAll('.symp-check:checked');
-            let otherSymptoms = Array.from(sympCheckboxes).map(cb => cb.value);
+            
+            // 🌟 รวบรวมเวลาจากทุกๆ แถวที่คนไข้กดเพิ่มไว้ 🌟
+            let offTimes = [];
+            document.querySelectorAll('.off-row').forEach(row => {
+                let s = row.querySelector('.off-start').value;
+                let e = row.querySelector('.off-end').value;
+                if(s && e) offTimes.push({start: s, end: e});
+            });
+
+            let dysTimes = [];
+            document.querySelectorAll('.dys-row').forEach(row => {
+                let s = row.querySelector('.dys-start').value;
+                let e = row.querySelector('.dys-end').value;
+                if(s && e) dysTimes.push({start: s, end: e});
+            });
+
+            let otherSymptoms = Array.from(document.querySelectorAll('.symp-check:checked')).map(cb => cb.value);
 
             let payload = {
                 action: 'submitLiffData',
@@ -251,10 +284,8 @@
                 mealBreak: document.getElementById('mBreak').value || "-",
                 mealLunch: document.getElementById('mLunch').value || "-",
                 mealDinner: document.getElementById('mDinner').value || "-",
-                offStart: document.getElementById('offStart').value,
-                offEnd: document.getElementById('offEnd').value,
-                dysStart: document.getElementById('dysStart').value,
-                dysEnd: document.getElementById('dysEnd').value,
+                offTimes: offTimes,   // ส่ง Array ของเวลาไปที่ Code.gs
+                dysTimes: dysTimes,   // ส่ง Array ของเวลาไปที่ Code.gs
                 otherSymptoms: otherSymptoms
             };
 
